@@ -7,9 +7,13 @@ Finally, turn on the PPU to display video.
 */
 
 #include "neslib.h"
+#include "vrambuf.h"
+#include "bcd.h"
 
 // link the pattern table into CHR ROM
 //#link "chr_generic.s"
+
+int test_var = 69;
 
 // main function, run after console reset
 void main(void) {

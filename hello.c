@@ -1,11 +1,3 @@
-
-/*
-A simple "hello world" example.
-Set the screen background color and palette colors.
-Then write a message to the nametable.
-Finally, turn on the PPU to display video.
-*/
-
 #include "neslib.h"
 #include "vrambuf.h"
 #include "bcd.h"
@@ -15,7 +7,33 @@ Finally, turn on the PPU to display video.
 //#link "chr_generic.s"
 //#link "vrambuf.c"
 
-int test_var = 69;
+///// METASPRITES
+
+#define TILE 0xd8
+#define ATTR 0x01
+#define ATTR2 0x61
+
+// define a 2x2 metasprite
+const unsigned char right[]={
+        0,      0,      TILE+0,   ATTR, 
+        0,      8,      TILE+1,   ATTR, 
+        8,      0,      TILE+2,   ATTR, 
+        8,      8,      TILE+3,   ATTR, 
+        128};
+
+const unsigned char left[]={
+        8,      0,      TILE+0,   ATTR2, 
+        8,      8,      TILE+1,   ATTR2, 
+        0,      0,      TILE+2,   ATTR2, 
+        0,      8,      TILE+3,   ATTR2, 
+        128};
+
+const unsigned char door[]={
+        0,      0,      0xc4+0,   ATTR, 
+        0,      8,      0xc4+1,   ATTR, 
+        8,      0,      0xc4+2,   ATTR, 
+        8,      8,      0xc4+3,   ATTR, 
+        128};
 
 const char PALETTE[32] =
 {
@@ -42,8 +60,12 @@ void main(void) {
   pal_all(PALETTE); // generally before game loop (in main)
 
   // write text to name table
-  vram_adr(NTADR_A(2,2));		// set address
-  vram_write("HELLO, W\x19RLD!", 13);	// write bytes to video RAM
+  vram_adr(NTADR_A(1,1));		// set address
+  vram_write("This is", 7);	// write bytes to video RAM
+  vram_adr(NTADR_A(1,2));
+  vram_write("Nick Bennett's", 14);
+  vram_adr(NTADR_A(1,3));
+  vram_write("first NES 'Game'!", 17);
   
   vram_adr(NTADR_A(1,24));
   for (i = 0; i < 30; i++) {
@@ -61,14 +83,21 @@ void main(void) {
   {
     char cur_oam = 0;
     x += dir;
-    if (x >= 240) {
+    if (x >= 232) {
       dir -= 2;
       attrib |= 0x60;	// makes bit 6 one to flip
     } else if (x <= 8) {
       dir += 2;
       attrib &= 0x00;	// makes bit 6 zero to flip
     }
-    cur_oam = oam_spr(x, 180, 0x19, attrib, cur_oam);
+    
+    if (dir > 0) {
+      cur_oam = oam_meta_spr(x, 174, cur_oam, right);
+    } else {
+      cur_oam = oam_meta_spr(x, 174, cur_oam, left);
+    }
+    cur_oam = oam_meta_spr(232, 174, cur_oam, door);
+    
     ppu_wait_frame();
   }
 }

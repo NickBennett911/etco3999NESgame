@@ -97,6 +97,9 @@ void main(void) {
       cur_oam = oam_meta_spr(x, 174, cur_oam, left);
     }
     cur_oam = oam_meta_spr(232, 174, cur_oam, door);
+    if (x > 216) {
+      
+    }
     
     ppu_wait_frame();
   }

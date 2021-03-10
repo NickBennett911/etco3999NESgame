@@ -85,10 +85,10 @@ void main(void) {
     x += dir;
     if (x >= 232) {
       dir -= 2;
-      attrib |= 0x60;	// makes bit 6 one to flip
+      //attrib |= 0x60;	// makes bit 6 one to flip
     } else if (x <= 8) {
       dir += 2;
-      attrib &= 0x00;	// makes bit 6 zero to flip
+      //attrib &= 0x00;	// makes bit 6 zero to flip
     }
     
     if (dir > 0) {
@@ -98,7 +98,15 @@ void main(void) {
     }
     cur_oam = oam_meta_spr(232, 174, cur_oam, door);
     if (x > 216) {
-      
+      // Do this to queue vram batch commands (in the game loop)
+      vrambuf_put(NTADR_A(1, 4), "Over Door!", 10);
+      // Do this when done -- it will wait for the next frame to start
+      // which is where the commands will execute -- no need for ppu_wait_nmi
+      // or ppu_wait_frame() commands.
+      vrambuf_flush();
+    } else {
+      vrambuf_put(NTADR_A(1, 4), "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 10);
+      vrambuf_flush();
     }
     
     ppu_wait_frame();

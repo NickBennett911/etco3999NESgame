@@ -32,6 +32,12 @@ void main(void) {
   int cur_lifetime = 0;
   int b_dir = 0;
   
+  // jumping
+  int min_accel = 5;
+  int accel = -min_accel;
+  bool jumping;
+  bool accel_this_frame = true;
+  
   // set palette colors
   pal_all(PALETTE); // generally before game loop (in main)
   
@@ -81,6 +87,9 @@ void main(void) {
           b_dir = idle_dir;
         }
       }
+      if (pad_result&(0x01<<4)){
+        jumping = true;
+      }
       // UPDATE
       if (p_x >= 232) {
           speed = 1;
@@ -123,6 +132,21 @@ void main(void) {
           b_in_use = false;
         } else if ( b_x >= 256 || b_x <= 0)
           b_in_use = false;
+      }
+    
+      if (jumping) {
+        p_y += accel;
+        if (accel_this_frame){
+          accel++;
+          if (accel >= min_accel) {
+            accel = -min_accel;
+            jumping = false;
+            p_y = 160;
+          } 
+          accel_this_frame = false;
+        } else {
+          accel_this_frame = true;
+        }
       }
 
       // DRAW

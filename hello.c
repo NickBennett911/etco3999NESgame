@@ -5,18 +5,9 @@
 #include "bcd.h"
 #include "config.h"
 
-
 // link the pattern table into CHR ROM
 //#link "chr_generic.s"
 //#link "vrambuf.c"
-
-
-
-
-
-
-
-
 
 // main function, run after console reset
 void main(void) {
@@ -33,6 +24,13 @@ void main(void) {
   int is_player_control = 1;
   
   int anim_state = 0;
+  
+  //bullet vars
+  bool b_in_use = false;
+  int b_x = 0, b_y = 0;
+  int lifetime = 25;
+  int cur_lifetime = 0;
+  int b_dir = 0;
   
   // set palette colors
   pal_all(PALETTE); // generally before game loop (in main)
@@ -55,75 +53,98 @@ void main(void) {
   vrambuf_clear();
   set_vram_update((byte*)0x100); // updbuf = 0x100 -- start of stack RAM
   
+  init_bullet_list();
   // infinite loop
   while (1) 
   {
-    char cur_oam = 0;
-    char pad_result = pad_poll(0);
-    
-    
-    if(pad_result&(0x01<<6)){	// left
-    	dir = -1;
-    	idle_dir = -1;
-      	anim_state++;
-    } else if (pad_result&(0x01<<7)) { 	// right
-    	dir = 1;
-      	idle_dir = 1;
-        anim_state++;
-    } else {
-      dir = 0;
-      anim_state = 0;
-    }
-    
-    if (p_x >= 232) {
-        speed = 1;
-      	p_x = 232;
-      //attrib |= 0x60;	// makes bit 6 one to flip
-    } else if (p_x <= 8) {
-        speed = 1;
-      	p_x = 8;
-      //attrib &= 0x00;	// makes bit 6 zero to flip
-    }
-    if (is_player_control) {
-    	p_x += speed * dir;
-       
-      	if (p_x >= 128 && left_side) {
-        	is_player_control = 0;
-          	left_side = 0;
+      char cur_oam = 0;
+      char pad_result = pad_poll(0);
+	
+      // INPUT
+      if(pad_result&(0x01<<6)){	// left
+          dir = -1;
+          idle_dir = -1;
+          anim_state++;
+      } else if (pad_result&(0x01<<7)) { 	// right
+          dir = 1;
+          idle_dir = 1;
+          anim_state++;
+      } else {
+        dir = 0;
+        anim_state = 0;
+      }
+      if (pad_result&(0x01<<0)) {	// space bar
+        if (b_in_use == false) {
+          b_x = p_x;
+          b_y = p_y;
+          b_in_use = true;
+          b_dir = idle_dir;
         }
-        if (p_x <= 128 && right_side) {
-        	is_player_control = 0;
-          	right_side = 0;
-        }
-    } else {
-    	screen_x += speed * dir;
-      	if (screen_x <= -8) {
-        	is_player_control = 1;
-          	left_side = 1;
-          	right_side = 0;
-        } else if (screen_x >= 264) {
-        	is_player_control = 1;
-          	right_side = 1;
-          	left_side = 0;
-        }
-    }
-    
-    
-    
-    if (dir == 1) {
-      cur_oam = oam_meta_spr(p_x, p_y, cur_oam, anim_right[anim_state%5]);
-    } else  if (dir == -1) {
-      cur_oam = oam_meta_spr(p_x, p_y, cur_oam, anim_left[anim_state%5]);
+      }
+      // UPDATE
+      if (p_x >= 232) {
+          speed = 1;
+          p_x = 232;
+      } else if (p_x <= 8) {
+          speed = 1;
+          p_x = 8;
+      }
+      if (is_player_control) {
+          p_x += speed * dir;
 
-    } else{
-    	if (idle_dir == 1) {
-          cur_oam = oam_meta_spr(p_x, p_y, cur_oam, anim_right[anim_state%5]);
-        } else if (idle_dir == -1) {
-          cur_oam = oam_meta_spr(p_x, p_y, cur_oam, anim_left[anim_state%5]);
-        }
-    }
-    scroll(screen_x, screen_y);
-    vrambuf_flush();
+          if (p_x >= 128 && left_side) {
+                  is_player_control = 0;
+                  left_side = 0;
+          }
+          if (p_x <= 128 && right_side) {
+                  is_player_control = 0;
+                  right_side = 0;
+          }
+      } else {
+          screen_x += speed * dir;
+          if (screen_x <= -8) {
+                  is_player_control = 1;
+                  left_side = 1;
+                  right_side = 0;
+          } else if (screen_x >= 264) {
+                  is_player_control = 1;
+                  right_side = 1;
+                  left_side = 0;
+          }
+      }
+
+      // BULLET UPDATE
+      if (b_in_use) {
+        b_x += b_dir * 4;
+        cur_lifetime += 1;
+        if (cur_lifetime > lifetime) {
+          cur_lifetime = 0;
+          b_y = -50;
+          b_in_use = false;
+        } else if ( b_x >= 256 || b_x <= 0)
+          b_in_use = false;
+      }
+
+      // DRAW
+      if (dir == 1) {
+        cur_oam = oam_meta_spr(p_x, p_y, cur_oam, anim_right[anim_state%5]);
+      } else  if (dir == -1) {
+        cur_oam = oam_meta_spr(p_x, p_y, cur_oam, anim_left[anim_state%5]);
+
+      } else{
+          if (idle_dir == 1) {
+            cur_oam = oam_meta_spr(p_x, p_y, cur_oam, anim_right[anim_state%5]);
+          } else if (idle_dir == -1) {
+            cur_oam = oam_meta_spr(p_x, p_y, cur_oam, anim_left[anim_state%5]);
+          }
+      }
+      if (b_in_use) {
+        cur_oam = oam_spr(b_x+4, b_y+4, 0xb6, 0x01, cur_oam);
+      }
+      oam_hide_rest(cur_oam);
+      scroll(screen_x, screen_y);
+      vrambuf_flush();
     
   }
 }
+

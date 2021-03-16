@@ -134,6 +134,21 @@ const unsigned char anim_right[5][17] = {
         128}
   
 };
+
+const unsigned char jump_right[] = {
+        0,      0,      0xe8+0,   ATTR, 
+        0,      8,      0xe8+1,   ATTR, 
+        8,      0,      0xe8+2,   ATTR, 
+        8,      8,      0xe8+3,   ATTR, 
+        128};
+
+const unsigned char jump_left[] = {
+        8,      0,      0xe8+0,   ATTR2, 
+        8,      8,      0xe8+1,   ATTR2, 
+        0,      0,      0xe8+2,   ATTR2, 
+        0,      8,      0xe8+3,   ATTR2, 
+        128};
+
 const unsigned char anim_left[5][17] = {
   { //0
         8,      0,      TILE+0,   ATTR2, 

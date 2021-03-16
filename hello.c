@@ -87,7 +87,7 @@ void main(void) {
           b_dir = idle_dir;
         }
       }
-      if (pad_result&(0x01<<4)){
+      if (pad_result&(0x01<<4)){	// jump
         jumping = true;
       }
       // UPDATE
@@ -150,16 +150,28 @@ void main(void) {
       }
 
       // DRAW
-      if (dir == 1) {
-        cur_oam = oam_meta_spr(p_x, p_y, cur_oam, anim_right[anim_state%5]);
-      } else  if (dir == -1) {
-        cur_oam = oam_meta_spr(p_x, p_y, cur_oam, anim_left[anim_state%5]);
-
-      } else{
-          if (idle_dir == 1) {
+      if (dir == 1) {		// moving right
+        if (jumping) 
+              cur_oam = oam_meta_spr(p_x, p_y, cur_oam, jump_right);
+         else
             cur_oam = oam_meta_spr(p_x, p_y, cur_oam, anim_right[anim_state%5]);
-          } else if (idle_dir == -1) {
+      } else  if (dir == -1) {	// moving left
+        if (jumping)
+            cur_oam = oam_meta_spr(p_x, p_y, cur_oam, jump_left);
+          else
             cur_oam = oam_meta_spr(p_x, p_y, cur_oam, anim_left[anim_state%5]);
+
+      } else{				// idling
+          if (idle_dir == 1) {		// facing right
+            if (jumping) 
+              cur_oam = oam_meta_spr(p_x, p_y, cur_oam, jump_right);
+            else
+              cur_oam = oam_meta_spr(p_x, p_y, cur_oam, anim_right[anim_state%5]);
+          } else if (idle_dir == -1) {	// facing left
+            if (jumping)
+              cur_oam = oam_meta_spr(p_x, p_y, cur_oam, jump_left);
+            else
+              cur_oam = oam_meta_spr(p_x, p_y, cur_oam, anim_left[anim_state%5]);
           }
       }
       if (b_in_use) {

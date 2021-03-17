@@ -35,7 +35,7 @@ void spawn_bullet(int px, int py, int dir) {
                     vram_put(0x44);
                 	bullets[i].in_use = true;
                   	bullets[i].xpos = px;
-                  	bullets[i].ypos = py;
+                  	bullets[i].ypos =   py;
                   	bullets[i].dir = dir;
                   	return;
                 }

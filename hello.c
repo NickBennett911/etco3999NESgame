@@ -4,6 +4,7 @@
 #include "vrambuf.h"
 #include "bcd.h"
 #include "config.h"
+#include "enemy.h"
 
 // link the pattern table into CHR ROM
 //#link "chr_generic.s"
@@ -11,7 +12,7 @@
 
 // main function, run after console reset
 void main(void) {
-
+  
   unsigned char p_x = 30, p_y = 160;
   int i;
   int dir = 0;
@@ -37,6 +38,17 @@ void main(void) {
   int accel = -min_accel;
   bool jumping;
   bool accel_this_frame = true;
+  
+  // enemies
+  int num_enemies = 2;  
+  struct Enemy enemies[2];
+  for (i = 0; i < num_enemies; i++) {
+    enemies[i].xpos = enemy_spawns[i][0];
+    enemies[i].ypos = enemy_spawns[i][1];
+    enemies[i].health = 10;
+    enemies[i].dir = -1;
+    enemies[i].move_radius = 30;
+  }
   
   // set palette colors
   pal_all(PALETTE); // generally before game loop (in main)
@@ -134,6 +146,16 @@ void main(void) {
           b_in_use = false;
       }
     
+      for (i = 0; i < num_enemies; i++) {
+        enemies[i].xpos += enemies[i].dir;
+        if (enemies[i].xpos < enemy_spawns[i][0] - enemies[i].move_radius){
+          enemies[i].dir  = 1;
+        } else if (enemies[i].xpos > enemy_spawns[i][0] + enemies[i].move_radius) {
+          enemies[i].dir = -1;
+        }
+      }
+    
+      // JUMPING UPDATE	
       if (jumping) {
         p_y += accel;
         if (accel_this_frame){
@@ -177,10 +199,12 @@ void main(void) {
       if (b_in_use) {
         cur_oam = oam_spr(b_x+4, b_y+4, 0xb6, 0x01, cur_oam);
       }
+      for (i = 0; i < num_enemies; i++) {	// display enemies
+        cur_oam = oam_meta_spr(enemies[i].xpos, enemies[i].ypos, cur_oam, enemy_left);
+      }
       oam_hide_rest(cur_oam);
       scroll(screen_x, screen_y);
       vrambuf_flush();
-    
   }
 }
 

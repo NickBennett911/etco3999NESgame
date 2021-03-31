@@ -3,6 +3,7 @@
 #include "neslib.h"
 #include "vrambuf.h"
 #include "bcd.h"
+#include "apu.h"
 
 #include "config.h"
 #include "enemy.h"
@@ -10,16 +11,20 @@
 // link the pattern table into CHR ROM
 //#link "chr_generic.s"
 //#link "vrambuf.c"
+//#link "apu.c"
 unsigned char ground_info[4];
 
-bool on_ground(px, py, cx, cy) {
-  
-  row = (py + 16 + cy)>>3;
-  col = (px + cx)>>3;
-  byte_col = col>>3;
-  bit = (col&0x07);
-  if (collisions[row<<2 + byte_col] & (0x80>>bit)) {
-    return true;
+bool is_colliding(Bullet* b, Enemy* e) {
+  int bx = b->xpos;
+  int by = b->ypos;
+  int ex = e->xpos;
+  int ey = e->ypos;
+  int xdiff = ex - bx;
+  int ydiff = ey - by;
+  if (xdiff > -8 && xdiff < 8) {
+    if (ydiff > -8 && ydiff < 8) {
+      return true;
+    }
   }
   return false;
 }
@@ -29,7 +34,7 @@ void main(void) {
   
   // player vars
   unsigned char p_x = 30, p_y = 100;
-  int i;
+  int i, j;
   int dir = 1;
   int speed = 1;
   int idle_dir = 1;
@@ -65,7 +70,8 @@ void main(void) {
   
   //unsigned char row, col, byte_col, bit;
   
-  
+  //apu_state |= ENABLE_PULSE1; // ENABLE_PULSE0, ENABLE_TRIANGLE, ENABLE_NOISE, ENABLE_DMC
+  APU_ENABLE(ENABLE_PULSE0);
   // enemies
   
   // set palette colors
@@ -117,11 +123,13 @@ void main(void) {
             spawn_bullet(p_x, p_y, idle_dir);
             cur_cooldown = fire_cooldown;
             can_fire = false;
-            // this is to cause damage
-            health -= 1;
-            vram_adr(NTADR_A(9+health, 1));
-            vram_put(0x00);
-            
+            // Plays a pulse which lasts a finite amt of time and stops
+            //unsigned char channel = PULSE_CH0; // or PULSE_CH1
+            //int period = 2000; // pitch, high value = lower pitch (0-2047)
+            //unsigned char duty = DUTY_25; // or DUTY_12, DUTY_50, DUTY_75
+            //unsigned char fade_time = 15; // fade out: 0=fast, 15=slow (in 240Hz frames?)
+            //unsigned char length = 30; // time of sound (0-31)
+            APU_PULSE_DECAY(PULSE_CH0, 2000, DUTY_25, 15, 30);
           }  
       }
       if (pad_result&(0x01<<4)){	// jump
@@ -140,6 +148,22 @@ void main(void) {
       }
 
       update_enemies();
+    
+      // BULLET COLLISION WITH ENEMIES
+      if (active_bullet() && active_enemie()) {
+      	for (i = 0; i<NUM_BULLETS; i++) {
+          if (bullets[i].in_use ) {
+            for (j = 0; j<NUM_ENEMIES; j++) {
+              if (enemies[j].in_use ) {
+            	if (is_colliding(&bullets[i], &enemies[j])) {
+                  bullets[i].in_use = false;
+                  enemies[j].in_use = false;
+                }
+              }
+            }
+          }
+        }
+      }
     
       // BULLET UPDATE
       if (active_bullet()) {

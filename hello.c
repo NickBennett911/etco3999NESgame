@@ -28,13 +28,15 @@ bool on_ground(px, py, cx, cy) {
 void main(void) {
   
   // player vars
-  unsigned char p_x = 30, p_y = 160;
+  unsigned char p_x = 30, p_y = 100;
   int i;
-  int dir = 0;
+  int dir = 1;
   int speed = 1;
   int idle_dir = 1;
   unsigned char attrib = 0x00;
   int health = 10;
+  int fall_accel_timer = 5;	
+  int max_accel = 5;
   
   // camera vars
   int screen_x = -8, screen_y = 0;
@@ -51,23 +53,20 @@ void main(void) {
   // jumping vars
   int min_accel = 5;
   int accel = -min_accel;
-  bool jumping;
+  bool flapping;
+  bool can_flap = true;
   bool accel_this_frame = true;
+  int flap_cooldown = 30;
+  int cur_flap_cooldown = 0;
+  
+  //enemy vars
+  int enemy_spawn_cooldown = 25;
+  int cur_enemy_spawn_cooldown = enemy_spawn_cooldown;
   
   //unsigned char row, col, byte_col, bit;
   
   
   // enemies
-  int num_enemies = 2;  
-  struct Enemy enemies[2];
-  
-  for (i = 0; i < num_enemies; i++) {
-    enemies[i].xpos = enemy_spawns[i][0];
-    enemies[i].ypos = enemy_spawns[i][1];
-    enemies[i].health = 10;
-    enemies[i].dir = -1;
-    enemies[i].move_radius = 30;
-  }
   
   // set palette colors
   pal_all(PALETTE); // generally before game loop (in main)
@@ -78,10 +77,10 @@ void main(void) {
   	vram_put(0x15);
   }
   
-  vram_adr(NTADR_A(0,4)); // Zelda probably started at 0x28d0 (8 rows below stats area)
+  vram_adr(NTADR_A(0,0)); // Zelda probably started at 0x28d0 (8 rows below stats area)
   vram_unrle(mapA); 
   
-  vram_adr(NTADR_B(0,4)); // Zelda probably started at 0x28d0 (8 rows below stats area)
+  vram_adr(NTADR_B(0,0)); // Zelda probably started at 0x28d0 (8 rows below stats area)
   vram_unrle(mapB); 
   
   // enable PPU rendering (turn on screen)
@@ -91,7 +90,7 @@ void main(void) {
   set_vram_update((byte*)0x100); // updbuf = 0x100 -- start of stack RAM
   
   init_bullet_list();
-  
+  init_enemies();
   // infinite loop
   while (1) 
   {
@@ -101,18 +100,18 @@ void main(void) {
       cur_oam = oam_spr(1, 32, 0x2e, 0x00, 0);
 	
       // INPUT
-      if(pad_result&(0x01<<6)){	// left
-          dir = -1;
-          idle_dir = -1;
-          anim_state++;
-      } else if (pad_result&(0x01<<7)) { 	// right
-          dir = 1;
-          idle_dir = 1;
-          anim_state++;
-      } else {
-        dir = 0;
-        anim_state = 0;
-      }
+      //if(pad_result&(0x01<<6)){	// left
+      //    dir = -1;
+      //    idle_dir = -1;
+      //    anim_state++;
+      //} else if (pad_result&(0x01<<7)) { 	// right
+      //    dir = 1;
+      //    idle_dir = 1;
+      //    anim_state++;
+      //} else {
+      //  dir = 0;
+      //  anim_state = 0;
+      //}
       if (pad_result&(0x01<<0)) {	// space bar
           if( can_fire ) {
             spawn_bullet(p_x, p_y, idle_dir);
@@ -126,40 +125,22 @@ void main(void) {
           }  
       }
       if (pad_result&(0x01<<4)){	// jump
-        jumping = true;
+        if (can_flap) {
+          flapping = true;
+          can_flap = false;
+          cur_flap_cooldown = flap_cooldown;
+          accel = -min_accel;
+          spawn_enemy();
+        }
       }
       // UPDATE
-      if (p_x >= 232) {
-          speed = 1;
-          p_x = 232;
-      } else if (p_x <= 9) {
-          speed = 1;
-          p_x = 9;
-      }
-      if (is_player_control) {
-          p_x += speed * dir;
-
-          if (p_x >= 128 && left_side) {
-                  is_player_control = 0;
-                  left_side = 0;
-          }
-          if (p_x <= 128 && right_side) {
-                  is_player_control = 0;
-                  right_side = 0;
-          }
-      } else {
-          screen_x += speed * dir;
-          if (screen_x <= -7) {
-                  is_player_control = 1;
-                  left_side = 1;
-                  right_side = 0;
-          } else if (screen_x >= 264) {
-                  is_player_control = 1;
-                  right_side = 1;
-                  left_side = 0;
-          }
+      cur_flap_cooldown -= 1;
+      if (cur_flap_cooldown <= 0){
+      	can_flap = true;
       }
 
+      update_enemies();
+    
       // BULLET UPDATE
       if (active_bullet()) {
         for (i = 0; i < NUM_BULLETS; i++) {
@@ -182,24 +163,17 @@ void main(void) {
         }
       }
       // updates the enemies
-      for (i = 0; i < num_enemies; i++) {
-        enemies[i].xpos += enemies[i].dir;
-        if (enemies[i].xpos < enemy_spawns[i][0] - enemies[i].move_radius){
-          enemies[i].dir  = 1;
-        } else if (enemies[i].xpos > enemy_spawns[i][0] + enemies[i].move_radius) {
-          enemies[i].dir = -1;
-        }
-      }
+      
     
-      // JUMPING UPDATE	
-      if (jumping) {
+      // flapping UPDATE	
+      if (flapping) {
         p_y += accel;
         if (accel_this_frame){
           accel++;
-          if (accel >= min_accel) {
-            accel = -min_accel;
-            jumping = false;
-            p_y = 160;
+          if (accel >= 1) {
+            flapping = false;
+            fall_accel_timer = 5;	
+            max_accel = 5;
           } 
           accel_this_frame = false;
         } else {
@@ -207,46 +181,36 @@ void main(void) {
         }
       }    
       
-      // player falling update
-      ground_info[0] = (p_y + 16 - 48 + screen_y)>>3;	//divide world 
-      ground_info[1] = (p_x + screen_x)>>3;
-      ground_info[2] = ground_info[1]>>3;
-      ground_info[3] = (ground_info[1]&0x07);
-      if (collisions[ground_info[0]<<2 + ground_info[2]] & (0x80>>ground_info[3])) {
-      //if (collisions[90] & (0x80)) {
-        //do nothing;
-      } else {
-        p_y += 1;
+      if (!flapping) {
+        fall_accel_timer -= 1;
+        if (fall_accel_timer <= 0) {
+          p_y += 1;
+          max_accel -= 1;
+          if (max_accel <= 1) 
+            max_accel = 1;
+          fall_accel_timer = max_accel;
+
+        }	
       }
-      //if (!on_ground(p_x, p_y, screen_x, screen_y)) {
-      //  p_y += 1;
-      //}
+      if (p_y >= 168) {
+        p_y = 168;
+      } else if (p_y < 8) {
+        p_y = 8;
+      }
 
       // DRAW
       // draws the player
       if (dir == 1) {		// moving right
-        if (jumping) 
+        if (flapping) 
               cur_oam = oam_meta_spr(p_x, p_y, cur_oam, jump_right);
          else
             cur_oam = oam_meta_spr(p_x, p_y, cur_oam, anim_right[anim_state%5]);
       } else  if (dir == -1) {	// moving left
-        if (jumping)
+        if (flapping)
             cur_oam = oam_meta_spr(p_x, p_y, cur_oam, jump_left);
           else
             cur_oam = oam_meta_spr(p_x, p_y, cur_oam, anim_left[anim_state%5]);
 
-      } else{				// idling
-          if (idle_dir == 1) {		// facing right
-            if (jumping) 
-              cur_oam = oam_meta_spr(p_x, p_y, cur_oam, jump_right);
-            else
-              cur_oam = oam_meta_spr(p_x, p_y, cur_oam, anim_right[anim_state%5]);
-          } else if (idle_dir == -1) {	// facing left
-            if (jumping)
-              cur_oam = oam_meta_spr(p_x, p_y, cur_oam, jump_left);
-            else
-              cur_oam = oam_meta_spr(p_x, p_y, cur_oam, anim_left[anim_state%5]);
-          }
       }
       // draws the bullets
       if (active_bullet()) {
@@ -257,12 +221,16 @@ void main(void) {
         }
       }
       // draws the enemies
-      for (i = 0; i < num_enemies; i++) {	// display enemies
-        if (enemies[i].xpos-screen_x+4 > 0 && enemies[i].xpos-screen_x-4 < 256)
-          cur_oam = oam_meta_spr(enemies[i].xpos-screen_x, enemies[i].ypos, cur_oam, enemy_left);
+      if (active_enemie()) {
+        for (i = 0; i < NUM_ENEMIES; i++) {	// display enemies
+          if (enemies[i].in_use) {
+            if (enemies[i].xpos+8 < 256)
+              cur_oam = oam_meta_spr(enemies[i].xpos, enemies[i].ypos, cur_oam, enemy_left);
+            }
+        }
       }
       oam_hide_rest(cur_oam);
-      split(screen_x, screen_y);
+      scroll(screen_x, screen_y);
       //vrambuf_flush();
   }
 }

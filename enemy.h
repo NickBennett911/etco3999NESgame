@@ -16,11 +16,6 @@ typedef struct
 
 Enemy enemies[NUM_ENEMIES];
 
-const int enemy_spawns[2][2]={
-  {110, 160},
-  {120, 135}
-};
-
 void init_enemies() {
   int i;
   for (i = 0; i < NUM_ENEMIES; i++) {

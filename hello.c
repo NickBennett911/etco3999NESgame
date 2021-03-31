@@ -225,7 +225,7 @@ void main(void) {
         for (i = 0; i < NUM_ENEMIES; i++) {	// display enemies
           if (enemies[i].in_use) {
             if (enemies[i].xpos+8 < 256)
-              cur_oam = oam_meta_spr(enemies[i].xpos, enemies[i].ypos, cur_oam, enemy_left);
+              cur_oam = oam_spr(enemies[i].xpos, enemies[i].ypos, 0xb6, 0x01, cur_oam);
             }
         }
       }

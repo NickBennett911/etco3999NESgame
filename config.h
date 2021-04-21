@@ -6,7 +6,7 @@
 
 #define NUM_BULLETS 1
 #define BUL_LIFETIME 20
-#define BUL_SPEED 8
+#define BUL_SPEED 10
 
 #define NOTE_TABLE note_table
 #define BASS_NOTE 36
@@ -173,6 +173,55 @@ const unsigned char DeathTable[57]={
 0x71,0x28,0x53,0x50,0x41,0x43,0x45,0x00,0x3d,0x00,0x52,0x45,0x53,0x45,0x54,0x29,
 0x00,0x01,0xfe,0x00,0x01,0x48,0x00,0x01,0x00
 };
+
+const unsigned char DeathTable2[35]={
+0x01,0x56,0x00,0x01,0x1e,0x56,0x56,0x00,0x01,0x1e,0x56,0x56,0x00,0x01,0x1e,0x56,
+0x00,0x01,0xfe,0x00,0x01,0x0d,0x56,0x00,0x01,0xfe,0x00,0x01,0xfe,0x00,0x01,0x4f,
+0x00,0x01,0x00
+};
+
+void fade_to_black() {
+  pal_bright(4);
+  ppu_wait_frame();
+  ppu_wait_frame();
+  ppu_wait_frame();
+  pal_bright(3);
+  ppu_wait_frame();
+  ppu_wait_frame();
+  ppu_wait_frame();
+  pal_bright(2);
+  ppu_wait_frame();
+  ppu_wait_frame();
+  ppu_wait_frame();
+  pal_bright(1);
+  ppu_wait_frame();
+  ppu_wait_frame();
+  ppu_wait_frame();
+  pal_bright(0);
+  ppu_wait_frame();
+  ppu_wait_frame();
+  ppu_wait_frame();
+}
+
+void fade_to_color() {
+  pal_bright(0);
+  ppu_wait_frame();
+  ppu_wait_frame();
+  ppu_wait_frame();
+  pal_bright(1);
+  ppu_wait_frame();
+  ppu_wait_frame();
+  ppu_wait_frame();
+  pal_bright(2);
+  ppu_wait_frame();
+  ppu_wait_frame();
+  ppu_wait_frame();
+  pal_bright(3);
+  ppu_wait_frame();
+  ppu_wait_frame();
+  ppu_wait_frame();
+  pal_bright(4);
+}
 
 
 

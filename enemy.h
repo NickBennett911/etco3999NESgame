@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define NUM_ENEMIES 5
+#define NUM_ENEMIES 7
 #define UPPER 15
 #define LOWER 150
 
@@ -22,7 +22,7 @@ void init_enemies() {
     enemies[i].in_use = false;
     enemies[i].xpos = 270;
     enemies[i].ypos = (rand() % (LOWER - UPPER + 1)) + UPPER;
-    enemies[i].speed = 1;
+    enemies[i].speed = 3;
     enemies[i].dir = -1;
   }
 }
@@ -49,17 +49,23 @@ bool active_enemie() {
   return false;
 }
 
-void update_enemies() {
+void enemy_reset() {
   int i;
   for (i = 0; i < NUM_ENEMIES; i++) {
     if (enemies[i].in_use) {
-      enemies[i].xpos += enemies[i].speed * enemies[i].dir;
-      if (enemies[i].xpos <= 0) {
-      	enemies[i].in_use = false;
-        break;
-      }
+      enemies[i].in_use = false;
     }
   }
+}
+
+void update_enemy(int i) {
+  if (enemies[i].in_use) {
+    enemies[i].xpos += enemies[i].speed * enemies[i].dir;
+    if (enemies[i].xpos <= 0) {
+      enemies[i].in_use = false;
+    }
+  }
+  
 }
 
 const unsigned char enemy_left[] = {

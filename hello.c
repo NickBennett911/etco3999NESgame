@@ -5,6 +5,7 @@
 #include "bcd.h"
 #include "apu.h"
 
+#include "power_up.h"
 #include "config.h"
 #include "enemy.h"
 
@@ -128,7 +129,7 @@ void main(void) {
   int cur_flap_cooldown = 0;
   
   //enemy vars
-  int enemy_spawn_cooldown = 25;
+  int enemy_spawn_cooldown = 15;
   int cur_enemy_spawn_cooldown = enemy_spawn_cooldown;
   
   //unsigned char row, col, byte_col, bit;
@@ -167,6 +168,7 @@ void main(void) {
     vram_put(0x15);
   }
   
+  music_ptr = 0;
   
   // enable PPU rendering (turn on screen)
   ppu_on_all();
@@ -183,7 +185,10 @@ void main(void) {
       char pad_result = pad_poll(0);
     
       cur_oam = oam_spr(1, 32, 0x2e, 0x00, 0);
-	
+
+      if (!music_ptr) 
+        start_music(music1);
+    
       // INPUT
       if (!is_dead) {
         if(pad_result&(0x01<<4)){	// up
@@ -202,15 +207,21 @@ void main(void) {
           if( can_fire && !is_dead ) {
             spawn_bullet(p_x, p_y, idle_dir);
             cur_cooldown = fire_cooldown;
+#include "power_up.h"
+
             can_fire = false;    
             shoot_sound();
           }  
           if (is_dead) {
             is_dead = false;
             p_y = 100;
-            //enemy_reset();
-            reset_bullets();
+            fade_to_black();
+            ppu_off();
+            vram_adr(NTADR_A(0,0)); // Zelda probably started at 0x28d0 (8 rows below stats area)
+            vram_unrle(mapA);
+            ppu_on_all();
             reset_score_hearts(score, hearts);
+            fade_to_color();
           }
       }
       /*if (pad_result&(0x01<<4)){	// jump
@@ -249,6 +260,16 @@ void main(void) {
               if (enemies[i].ypos > (p_y-8)){
                 enemies[i].in_use = false;
                 is_dead = decrement_health(hearts);
+                if (is_dead) {
+                  fade_to_black();
+                  ppu_off();
+                  vram_adr(NTADR_A(0,0)); // Zelda probably started at 0x28d0 (8 rows below stats area)
+                  vram_unrle(DeathTable); \
+                  ppu_on_all();
+                  enemy_reset();
+                  reset_bullets();
+                  fade_to_color();
+                }
                 take_damage_sound();
                 break;
               }
@@ -334,11 +355,12 @@ void main(void) {
         for (i = 0; i < NUM_ENEMIES; i++) {	// display enemies
           if (enemies[i].in_use) {
             if (!is_dead)
-              //update_enemy(i);
+              update_enemy(i);
             for (j = 0; j < NUM_BULLETS; j++) {
                 if (bullets[j].in_use) {
                   if (is_colliding(enemies[i].xpos, enemies[i].ypos, bullets[j].xpos, bullets[j].ypos)) {
                     bullets[j].in_use = false;
+                    can_fire = true;
                     enemies[i].in_use = false;
                     increment_score(score);
                     deal_damage_sound();

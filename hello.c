@@ -9,6 +9,8 @@
 #include "config.h"
 #include "enemy.h"
 
+#include "time.h"
+
 // link the pattern table into CHR ROM
 //#link "chr_generic.s"
 //#link "vrambuf.c"
@@ -16,7 +18,7 @@
 /*{pal:"nes", layout:"nes"}*/
 
 unsigned char ground_info[4];
-
+int random;
 
 bool is_colliding(int x1, int y1, int x2, int y2) {
   int xdiff = x1 - x2;
@@ -35,33 +37,77 @@ void increment_score(char* score) {
   char temp[] = {0x30, 0x30, 0x30};
   if (score[2]+1 <= 0x39) {
     score[2] += 1;
-    vrambuf_put(NTADR_A(8, 1), score, 3);
+    vrambuf_put(NTADR_A(9, 2), score, 3);
     vrambuf_flush();
     return;
   }
   score[2] = 0x30;
   if (score[1]+1 <= 0x39) {
     score[1] += 1;
-    vrambuf_put(NTADR_A(8, 1), score, 3);
+    vrambuf_put(NTADR_A(9, 2), score, 3);
     vrambuf_flush();
     return;
   }
   score[1] = 0x30;
   if (score[0]+1 <= 0x39) {
-    vrambuf_put(NTADR_A(8, 1), score, 3);
+    vrambuf_put(NTADR_A(9, 2), score, 3);
     vrambuf_flush();
     score[0] += 1;
     return;
   }
 }
 
+void increment_bomb_count(char* bomb_list, char* num_bombs) {
+  *num_bombs++;
+  if (bomb_list[1]+1 <= 0x39){
+    bomb_list[1] += 1;
+    vrambuf_put(NTADR_A(27, 2), bomb_list, 2);
+    vrambuf_flush();
+    return;
+  }
+  bomb_list[1] = 0x30;
+  if (bomb_list[0]+1 <= 0x39) {
+    bomb_list[0] += 1;
+    vrambuf_put(NTADR_A(27, 2), bomb_list, 2);
+    vrambuf_flush();
+    return;
+  }
+}
+
+void decrement_bomb_count(char* bomb_list, char* num_bombs) {
+  *num_bombs--;
+  if (bomb_list[0] > 0x30){		// mulitple of ten
+    if (bomb_list[1] == 0x30) {
+      bomb_list[0] -= 1;
+      bomb_list[1] = 0x39;
+      vrambuf_put(NTADR_A(27, 2), bomb_list, 2);
+      vrambuf_flush();
+      return;
+    }
+    else if (bomb_list[1] > 0x30) {
+      bomb_list[1] -= 1;
+      vrambuf_put(NTADR_A(27, 2), bomb_list, 2);
+      vrambuf_flush();
+      return;
+    }
+  }
+  if (bomb_list[1] > 0x30) {
+    bomb_list[1] -= 1;
+    vrambuf_put(NTADR_A(27, 2), bomb_list, 2);
+    vrambuf_flush();
+    return;
+  }
+  
+    
+}
+
 void reset_score_hearts(char* score, char* hearts) {
   score[0] = 0x30; score[1] = 0x30; score[2] = 0x30;
-  vrambuf_put(NTADR_A(8, 1), score, 3);
+  vrambuf_put(NTADR_A(9, 2), score, 3);
   vrambuf_flush();
   
   hearts[0] = 0x15; hearts[1] = 0x15; hearts[2] = 0x15;
-  vrambuf_put(NTADR_A(19, 1), hearts, 3);
+  vrambuf_put(NTADR_A(20, 2), hearts, 3);
   vrambuf_flush();
 }
 
@@ -69,19 +115,19 @@ void reset_score_hearts(char* score, char* hearts) {
 bool decrement_health(char* hearts) {
   if (hearts[2] == 0x15) {
     hearts[2] = 0x00;
-    vrambuf_put(NTADR_A(19, 1), hearts, 3);
+    vrambuf_put(NTADR_A(20, 2), hearts, 3);
     vrambuf_flush();
     return false;
   }
   if (hearts[1] == 0x15) {
     hearts[1] = 0x00;
-    vrambuf_put(NTADR_A(19, 1), hearts, 3);
+    vrambuf_put(NTADR_A(20, 2), hearts, 3);
     vrambuf_flush();
     return false;
   }
   if (hearts[0] == 0x15) {
     hearts[0] = 0x00;
-    vrambuf_put(NTADR_A(19, 1), hearts, 3);
+    vrambuf_put(NTADR_A(20, 2), hearts, 3);
     vrambuf_flush();
     return true;
   }
@@ -104,6 +150,8 @@ void main(void) {
   int max_accel = 5;
   bool is_dead = false;
   char score[] = { 0x30, 0x30, 0x30 };
+  char num_bombs[] = {0x30, 0x30};
+  char bomb_count = 0;
   
   // camera vars
   int screen_x = -8, screen_y = 0;
@@ -132,6 +180,11 @@ void main(void) {
   int enemy_spawn_cooldown = 15;
   int cur_enemy_spawn_cooldown = enemy_spawn_cooldown;
   
+  //bomb powerup var
+  int bomb_spawn_cooldown = 30;
+  int cur_bomb_cooldown = bomb_spawn_cooldown;
+  
+  
   //unsigned char row, col, byte_col, bit;
   
   //apu_state |= ENABLE_PULSE1; // ENABLE_PULSE0, ENABLE_TRIANGLE, ENABLE_NOISE, ENABLE_DMC
@@ -155,17 +208,22 @@ void main(void) {
   vram_adr(NTADR_B(0,0)); // Zelda probably started at 0x28d0 (8 rows below stats area)
   vram_unrle(mapB); 
   
-  vrambuf_put(NTADR_A(8, 1), score, 3);
-  vrambuf_flush();
+  //vrambuf_put(NTADR_A(8, 2), score, 3);
+  //vrambuf_flush();
   
-  vram_adr(NTADR_A(8, 1));
+  vram_adr(NTADR_A(9, 2));
   for (i = 0; i < 3; i++) {
     vram_put(score[i]);
   }
   
-  vram_adr(NTADR_A(19, 1));
+  vram_adr(NTADR_A(20, 2));
   for (i = 0; i < health; i++) {
     vram_put(0x15);
+  }
+  
+  vram_adr(NTADR_A(27, 2));
+  for (i = 0; i < 2; i++) {
+    vram_put(0x30);
   }
   
   music_ptr = 0;
@@ -178,6 +236,7 @@ void main(void) {
   
   init_bullet_list();
   init_enemies();
+  init_powerups();
   // infinite loop
   while (1) 
   {
@@ -207,7 +266,6 @@ void main(void) {
           if( can_fire && !is_dead ) {
             spawn_bullet(p_x, p_y, idle_dir);
             cur_cooldown = fire_cooldown;
-#include "power_up.h"
 
             can_fire = false;    
             shoot_sound();
@@ -245,11 +303,21 @@ void main(void) {
       //if (!is_dead) {
       //  update_enemies();
       //}
-        
-      cur_enemy_spawn_cooldown -= 1;
-      if (cur_enemy_spawn_cooldown <= 0) {
-        spawn_enemy();
-        cur_enemy_spawn_cooldown = enemy_spawn_cooldown;
+      if (!is_dead) {
+        cur_enemy_spawn_cooldown -= 1;
+        if (cur_enemy_spawn_cooldown <= 0) {
+          spawn_enemy();
+          cur_enemy_spawn_cooldown = enemy_spawn_cooldown;
+        }
+      
+        cur_bomb_cooldown -= 1;
+        if (cur_bomb_cooldown <= 0) {
+          random = (rand() % (2 + 1));
+          
+          if (random == 1)
+	    spawn_powerup();
+          cur_bomb_cooldown = bomb_spawn_cooldown;
+        }
       }
     
       //bird collision with player
@@ -264,7 +332,7 @@ void main(void) {
                   fade_to_black();
                   ppu_off();
                   vram_adr(NTADR_A(0,0)); // Zelda probably started at 0x28d0 (8 rows below stats area)
-                  vram_unrle(DeathTable); \
+                  vram_unrle(DeathTable); 
                   ppu_on_all();
                   enemy_reset();
                   reset_bullets();
@@ -315,14 +383,30 @@ void main(void) {
 
         }	
       }*/
-      if (p_y >= 168) {
-        p_y = 167;
+      if (p_y >= 178) {
+        p_y = 177;
         is_dead = true;
         take_damage_sound();
-      } else if (p_y < 8) {
-        p_y = 9;
+        fade_to_black();
+        ppu_off();
+        vram_adr(NTADR_A(0,0)); // Zelda probably started at 0x28d0 (8 rows below stats area)
+        vram_unrle(DeathTable); 
+        ppu_on_all();
+        enemy_reset();
+        reset_bullets();
+        fade_to_color();
+      } else if (p_y < 38) {
+        p_y = 39;
         is_dead = true;
         take_damage_sound();
+        fade_to_black();
+        ppu_off();
+        vram_adr(NTADR_A(0,0)); // Zelda probably started at 0x28d0 (8 rows below stats area)
+        vram_unrle(DeathTable); 
+        ppu_on_all();
+        enemy_reset();
+        reset_bullets();
+        fade_to_color();
         
       }
 
@@ -339,6 +423,25 @@ void main(void) {
           else
             cur_oam = oam_meta_spr(p_x, p_y, cur_oam, anim_left[anim_state%5]);
 
+      }
+      // draw bomb powerups
+      if (active_powerup()) {
+        for (i = 0; i < POSSIBLE_POWERUPS; i++ ) {
+          if (powerups[i].in_use){
+            if (!is_dead)
+              update_powerup(i);
+            if (powerups[i].xpos+4 < 256)
+              cur_oam = oam_spr(powerups[i].xpos+4, powerups[i].ypos+4, 0x19, 0x01, cur_oam);
+            if (powerups[i].ypos < (p_y+16)) {
+              if (powerups[i].ypos > (p_y-8)){
+                if (powerups[i].xpos < 38 && powerups[i].xpos > 22) {
+                  powerups[i].in_use = false;
+                  increment_bomb_count(num_bombs, &bomb_count);
+                }
+              }
+            }
+          }
+        }
       }
       // draws the bullets
       //if (active_bullet()) {

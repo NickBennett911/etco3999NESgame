@@ -3,8 +3,8 @@
 #include "time.h"
 
 #define POSSIBLE_POWERUPS 1
-#define UPPER 15
-#define LOWER 150
+#define POWERUPPER 44
+#define LOWER 175
 
 typedef struct 
 {
@@ -22,7 +22,7 @@ void init_powerups() {
   for (i = 0; i < POSSIBLE_POWERUPS; i++) {
     powerups[i].in_use = false;
     powerups[i].xpos = 270;
-    powerups[i].ypos = (rand() % (LOWER - UPPER + 1)) + UPPER;
+    powerups[i].ypos = (rand() % (LOWER - POWERUPPER + 1)) + POWERUPPER;
     powerups[i].speed = 4;
     powerups[i].dir = -1;
   }
@@ -34,7 +34,7 @@ void spawn_powerup() {
     if (!powerups[i].in_use) {
       powerups[i].in_use = true;
       powerups[i].xpos = 270;
-      powerups[i].ypos = (rand() % (LOWER - UPPER + 1)) + UPPER;
+      powerups[i].ypos = (rand() % (LOWER - POWERUPPER + 1)) + POWERUPPER;
       break;
     }
   }

@@ -3,8 +3,8 @@
 #include <time.h>
 
 #define NUM_ENEMIES 7
-#define UPPER 15
-#define LOWER 150
+#define ENEMYUPPER 44
+#define ELOWER 175
 
 typedef struct
 {
@@ -21,7 +21,7 @@ void init_enemies() {
   for (i = 0; i < NUM_ENEMIES; i++) {
     enemies[i].in_use = false;
     enemies[i].xpos = 270;
-    enemies[i].ypos = (rand() % (LOWER - UPPER + 1)) + UPPER;
+    enemies[i].ypos = (rand() % (ELOWER - ENEMYUPPER + 1)) + ENEMYUPPER;
     enemies[i].speed = 3;
     enemies[i].dir = -1;
   }
@@ -33,7 +33,7 @@ void spawn_enemy() {
     if (!enemies[i].in_use) {
       enemies[i].in_use = true;
       enemies[i].xpos = 270;
-      enemies[i].ypos = (rand() % (LOWER - UPPER + 1)) + UPPER;
+      enemies[i].ypos = (rand() % (ELOWER - ENEMYUPPER + 1)) + ENEMYUPPER;
       break;
     }
   }

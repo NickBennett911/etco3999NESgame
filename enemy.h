@@ -27,13 +27,14 @@ void init_enemies() {
   }
 }
 
-void spawn_enemy() {
+void spawn_enemy(int speed) {
   int i;
   for (i = 0; i < NUM_ENEMIES; i++) {
     if (!enemies[i].in_use) {
       enemies[i].in_use = true;
       enemies[i].xpos = 270;
       enemies[i].ypos = (rand() % (ELOWER - ENEMYUPPER + 1)) + ENEMYUPPER;
+      enemies[i].speed = speed;
       break;
     }
   }
@@ -66,6 +67,17 @@ void update_enemy(int i) {
     }
   }
   
+}
+
+int num_enemies_on_screen() {
+  int count;
+  int i;
+  for (i = 0; i < NUM_ENEMIES; i++) {
+    if (enemies[i].in_use) {
+      count++;
+    }
+  }
+  return count;
 }
 
 const unsigned char enemy_left[] = {
